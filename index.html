@@ -1,4 +1,4 @@
- <!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -7,34 +7,36 @@
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <div class="card" 
-    >
+    <div class="card">
         <div class="search">
             <input type="text" placeholder="enter city name" spellcheck="false">
             <button><img src="images/search.png"></button>
         </div>
         <div class="error">
-            <p>invalid city name</p>
+            <p>Invalid city name</p>
+        </div>
+        <div class="loading">
+            <p>Loading weather data...</p>
         </div>
         <div class="weather">
             <img src="images/rain.png" class="weather-icon">
             <h1 class="temp">22°c</h1>
-            <h2 class="city">new york</h2>
-            <div class="details">
+            <h2 class="city">New York</h2>
+            <p class="description"></p> <p class="feels-like"></p> <div class="details">
                 <div class="col">
                     <img src="images/humidity.png">
                     <div>
                         <p class="humidity">50%</p>
-                        <p>humidity</p>
+                        <p>Humidity</p>
                     </div>
                 </div>
                 <div class="col">
                     <img src="images/wind.png">
                     <div>
                         <p class="wind">15km/h</p>
-                        <p>wind speed</p>
+                        <p>Wind Speed</p>
                     </div>
-                </div>
+                    </div>
             </div>
         </div>
     </div>
@@ -46,50 +48,93 @@
         const searchBox = document.querySelector(".search input");
         const searchBtn = document.querySelector(".search button");
         const weatherIcon = document.querySelector(".weather-icon");
+        const weatherCard = document.querySelector(".card"); // Reference to the main card for background changes
+        const loadingIndicator = document.querySelector(".loading"); // Reference to loading indicator
 
         async function checkweather(city){
-            const response = await fetch(apiurl + city +`&appid=${apikey}`);
+            loadingIndicator.style.display = "block"; // Show loading indicator
+            document.querySelector(".weather").style.display = "none"; // Hide weather info
+            document.querySelector(".error").style.display = "none"; // Hide error message
 
-            if(response.status == 404){
-                document.querySelector(".error").style.display = "block";
-                document.querySelector(".weather").style.display = "none";
-            }else{
+            try {
+                const response = await fetch(apiurl + city +`&appid=${apikey}`);
+
+                if(response.status == 404){
+                    loadingIndicator.style.display = "none"; // Hide loading indicator
+                    document.querySelector(".error").style.display = "block"; // Show error message
+                    document.querySelector(".weather").style.display = "none";
+                    weatherCard.style.backgroundImage = "none"; // Clear any dynamic background
+                    return; // Exit function
+                }
+
                 var data = await response.json();
+                loadingIndicator.style.display = "none"; // Hide loading indicator
 
-document.querySelector(".city").innerHTML= data.name;
-document.querySelector(".temp").innerHTML= Math.round(data.main.temp) +"°c";
-document.querySelector(".humidity").innerHTML= data.main.humidity +"%";
-document.querySelector(".wind").innerHTML= data.wind.speed +" km/h";
+                document.querySelector(".city").innerHTML= data.name;
+                document.querySelector(".temp").innerHTML= Math.round(data.main.temp) +"°c";
+                document.querySelector(".humidity").innerHTML= data.main.humidity +"%";
+                document.querySelector(".wind").innerHTML= data.wind.speed +" km/h";
+                document.querySelector(".description").innerHTML = data.weather[0].description; // New: weather description
+                document.querySelector(".feels-like").innerHTML = "Feels like: " + Math.round(data.main.feels_like) +"°c"; // New: "feels like" temp
 
-if(data.weather[0].main == "Clouds"){
-    weatherIcon.src = "images/clouds.png";
-}
-else if(data.weather[0].main == "Clear"){
-    weatherIcon.src = "images/clear.png";
-}
-else if(data.weather[0].main == "Rain"){
-    weatherIcon.src = "images/Rain.png";
-}
-else if(data.weather[0].main == "Drizzle"){
-    weatherIcon.src = "images/Drizzle.png";
-}
-else if(data.weather[0].main == "Mist"){
-    weatherIcon.src = "images/Mist.png";
-}
+                const currentTime = Math.floor(Date.now() / 1000); // Current time in seconds
+                const isDay = currentTime > data.sys.sunrise && currentTime < data.sys.sunset; // Check if it's daytime
 
-document.querySelector(".weather").style.display = "block";
-document.querySelector(".error").style.display = "none";
+                // Dynamic weather icon and background based on weather condition and time of day
+                if(data.weather[0].main == "Clouds"){
+                    weatherIcon.src = isDay ? "images/clouds.png" : "images/clouds-night.png"; // Assuming clouds-night.png exists
+                    weatherCard.style.backgroundImage = isDay ? "url('images/cloudy-day-bg.jpg')" : "url('images/cloudy-night-bg.jpg')"; // Assuming cloudy backgrounds
+                }
+                else if(data.weather[0].main == "Clear"){
+                    weatherIcon.src = isDay ? "images/clear.png" : "images/moon.png"; // Assuming moon.png exists
+                    weatherCard.style.backgroundImage = isDay ? "url('images/clear-day-bg.jpg')" : "url('images/clear-night-bg.jpg')"; // Assuming clear backgrounds
+                }
+                else if(data.weather[0].main == "Rain"){
+                    weatherIcon.src = "images/rain.png";
+                    weatherCard.style.backgroundImage = "url('images/rainy-bg.jpg')"; // Assuming rainy-bg.jpg exists
+                }
+                else if(data.weather[0].main == "Drizzle"){
+                    weatherIcon.src = "images/drizzle.png";
+                    weatherCard.style.backgroundImage = "url('images/drizzle.png')"; // Can use same image as icon, or a specific background
+                }
+                else if(data.weather[0].main == "Mist"){
+                    weatherIcon.src = "images/mist.png";
+                    weatherCard.style.backgroundImage = "url('images/misty-bg.jpg')"; // Assuming misty-bg.jpg exists
+                }
+                else {
+                    // Fallback for other weather conditions or if image is missing
+                    weatherIcon.src = "images/default-weather.png"; // Create a default icon image
+                    weatherCard.style.backgroundImage = "none"; // No specific background
+                }
+
+                weatherCard.style.backgroundSize = "cover"; // Ensure background covers the card
+                weatherCard.style.backgroundPosition = "center"; // Center the background image
+                weatherCard.style.color = "#fff"; // Adjust text color for better contrast with backgrounds
+
+                document.querySelector(".weather").style.display = "block"; // Show weather info
+
+            } catch (error) {
+                loadingIndicator.style.display = "none";
+                document.querySelector(".error").style.display = "block";
+                document.querySelector(".error p").innerHTML = "An error occurred. Please try again later."; // More generic error
+                console.error("Error fetching weather data:", error);
             }
-
-           
-    }
-
-
+        }
 
         searchBtn.addEventListener("click", ()=>{
             checkweather(searchBox.value);
-        })
+        });
+
+        // Allow searching by pressing Enter key
+        searchBox.addEventListener("keydown", (event) => {
+            if (event.key === "Enter") {
+                checkweather(searchBox.value);
+            }
+        });
+
+        // Call checkweather with a default city on page load
+        checkweather("New York"); // You can set any default city here
     </script>
 </body>
-</html> 
+</html>
 
